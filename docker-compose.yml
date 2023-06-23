@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  mysql_db:
+    image: "mysql:8" 
+    container_name: mysqlinstapro-container
+    environment:
+      MYSQL_ROOT_USER: root
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE_STG: stg_layer
+      MYSQL_DATABASE_ANALYTICS: analytics_layer
+      MYSQL_USER: nonroot
+      MYSQL_PASSWORD: nonroot
+  
+  data_ingestion:
+    build:
+      context: data_ingestion
+    environment:
+      MYSQL_CS: 'mysql+pymysql://nonroot:nonroot@mysql_db/stg_layer?charset=utf8'
+      MYSQL_HOST: 'mysqlinstapro-container'
+
+    depends_on:
+      - mysql_db
+    command: ["python", "./data_ingestion.py" ]
+    
+  dim_date:
+    build:
+      context: dim_date
+    environment:
+      MYSQL_CS: 'mysql+pymysql://nonroot:nonroot@mysql_db/analytics_layer?charset=utf8'
+      MYSQL_HOST: 'mysqlinstapro-container'
+
+    depends_on:
+      - mysql_db
+      - data_ingestion
+    command: ["python", "./dim_date.py" ]
+    
+  dim_professional:
+    build:
+      context: dim_professional
+    environment:
+      MYSQL_CS: 'mysql+pymysql://nonroot:nonroot@mysql_db/analytics_layer?charset=utf8'
+      MYSQL_HOST: 'mysqlinstapro-container'
+
+    depends_on:
+      - mysql_db
+      - data_ingestion
+    command: ["python", "./dim_professional.py" ]
+
+  dim_service:
+    build:
+      context: dim_service
+    environment:
+      MYSQL_CS: 'mysql+pymysql://nonroot:nonroot@mysql_db/analytics_layer?charset=utf8'
+      MYSQL_HOST: 'mysqlinstapro-container'
+
+    depends_on:
+      - mysql_db
+      - data_ingestion
+    command: ["python", "./dim_service.py" ]
+    
+  fct_availability_snapshot:
+    build:
+      context: fct_availability_snapshot
+    environment:
+      MYSQL_CS: 'mysql+pymysql://nonroot:nonroot@mysql_db/analytics_layer?charset=utf8'
+      MYSQL_HOST: 'mysqlinstapro-container'
+
+    depends_on:
+      - mysql_db
+      - data_ingestion
+    command: ["python", "./fct_availability_snapshot.py" ]
